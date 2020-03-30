@@ -4,7 +4,20 @@ import axios from "axios";
 import styled from "styled-components";
 import Login from "./Login";
 import Register from "./Register";
+import { gql } from "apollo-boost";
+import { ApolloProvider, useQuery } from "@apollo/react-hooks";
+import ApolloClient from "apollo-boost";
 axios.defaults.withCredentials = true;
+
+const ME = gql`
+    query me {
+        me {
+            id
+            email
+            name
+        }
+    }
+`;
 
 const Wrapper = styled.div`
     form {
@@ -27,6 +40,7 @@ const Wrapper = styled.div`
 function Example() {
     const [me, setMe] = useState("");
     const [isLoading, setLoading] = useState(false);
+    const { loading, error, data } = useQuery(ME);
 
     useEffect(() => {
         getMe();
@@ -52,9 +66,10 @@ function Example() {
         }
     };
 
-    if (isLoading) {
+    if (isLoading || loading) {
         return "loading...";
     }
+    console.log("DATA", data);
 
     return (
         <Wrapper className="container">
@@ -92,6 +107,28 @@ function Example() {
 
 export default Example;
 
+const client = new ApolloClient({
+    uri: "/graphql",
+    request: async operation => {
+        let xsrfToken = "";
+        const cookie = document.cookie.match(
+            "(^|[^;]+)\\s*XSRF-TOKEN\\s*=\\s*([^;]+)"
+        );
+        if (cookie.length >= 2) {
+            xsrfToken = decodeURIComponent(cookie[2]);
+        }
+        operation.setContext({
+            headers: {
+                "x-xsrf-token": xsrfToken
+            }
+        });
+    }
+});
 if (document.getElementById("app")) {
-    ReactDOM.render(<Example />, document.getElementById("app"));
+    ReactDOM.render(
+        <ApolloProvider client={client}>
+            <Example />
+        </ApolloProvider>,
+        document.getElementById("app")
+    );
 }
